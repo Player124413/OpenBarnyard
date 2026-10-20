@@ -94,6 +94,12 @@ jobs:
           echo "platforms:";   ls "$SDK/platforms"   2>/dev/null || true
           echo "build-tools:"; ls "$SDK/build-tools" 2>/dev/null || true
           echo "ndks:";        ls "$SDK/ndk"         2>/dev/null || true
+          echo "::notice::SDK root $SDK contains: $(ls "$SDK" 2>/dev/null | tr '\n' ' ')"
+          echo "::notice::platforms: $(ls "$SDK/platforms" 2>/dev/null | tr '\n' ' ')"
+          echo "::notice::first platform contents: $(ls "$SDK"/platforms/*/ 2>/dev/null | head -n 30 | tr '\n' ' ')"
+          echo "::notice::build-tools: $(ls "$SDK/build-tools" 2>/dev/null | tr '\n' ' ')"
+          echo "::notice::ndk: $(ls "$SDK/ndk" 2>/dev/null | tr '\n' ' ')"
+          echo "::notice::cmdline-tools: $(ls "$SDK/cmdline-tools" 2>/dev/null | tr '\n' ' ')"
           cat > /tmp/sdk_check.py <<'PYEOF'
           import os, re, sys
           sdk = sys.argv[1]
