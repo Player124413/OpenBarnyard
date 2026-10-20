@@ -152,7 +152,9 @@ jobs:
   emulator-smoke:
     name: Emulator smoke test
     needs: build
-    runs-on: ubuntu-latest
+    # Pinned: Android-emulator-runner relies on avdmanager/sdkmanager as
+    # shipped in older cmdline-tools; the ubuntu-26 image breaks it.
+    runs-on: ubuntu-24.04
     # Best-effort: emulators on shared runners can be flaky/slow. The build
     # and unit-test jobs above are the gating signal; this job adds a real
     # "install + launch + touch" run with screenshots when it succeeds.
@@ -166,13 +168,21 @@ jobs:
           name: openbarnyard-Android
           path: Android/dist
 
+      - name: Enable KVM (hardware acceleration)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       - name: Run on emulator (API 30, x86_64)
         uses: reactivecircus/Android-emulator-runner@v2
         with:
           api-level: 30
+          target: default
           arch: x86_64
           profile: Nexus 6
           disable-animations: true
+          emulator-boot-timeout: 900
           script: sh Android/tools/emulator_smoke.sh Android/dist/*-universal.apk emulator-out
 
       - name: Upload screenshots & logcat

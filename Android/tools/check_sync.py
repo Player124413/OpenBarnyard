@@ -90,6 +90,8 @@ def check_case_integrity():
     check((cap + ".jar") not in build, "build.py: wrong-case platform jar name")
     check(("-l" + word) in build, "build.py: lowercase -l flag for native window lib missing")
     check((upper + "_SDK_ROOT") in build, "build.py: uppercase SDK env var missing")
+    check(("linux-" + word) in build, "build.py: lowercase NDK triple missing")
+    check(("linux-" + cap) not in build, "build.py: wrong-case NDK triple")
     check((cap + "_SDK_ROOT") not in build, "build.py: wrong-case SDK env var")
     cmake = read("Android/app/src/main/cpp/CMakeLists.txt")
     check((" " + word + " log") in cmake, "CMakeLists: lowercase native window lib missing")
