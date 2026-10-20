@@ -108,7 +108,17 @@ jobs:
           OB_KEYSTORE_PASS: ${{ secrets.OB_KEYSTORE_PASS }}
           OB_KEY_ALIAS: ${{ secrets.OB_KEY_ALIAS }}
           OB_KEY_PASS: ${{ secrets.OB_KEY_PASS }}
-        run: python3 Android/build.py
+        run: |
+          set +e
+          python3 -u Android/build.py 2>&1 | tee /tmp/build.log
+          rc=${PIPESTATUS[0]}
+          if [ "$rc" -ne 0 ]; then
+            { grep -inE 'error|failed|exception|Traceback|FAILURE|invalid|not found|No such' /tmp/build.log | head -n 30
+              echo "----- tail -----"
+              tail -n 25 /tmp/build.log
+            } | sed 's/%/%25/g' | cut -c1-320 | while IFS= read -r line; do echo "::error::build: $line"; done
+          fi
+          exit "$rc"
 
       - name: Verify APK structure & ELF ABIs
         run: python3 Android/verify_apk.py Android/dist/*.apk
