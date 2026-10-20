@@ -83,19 +83,42 @@ jobs:
 
       # GitHub's ubuntu images ship the Android SDK with sdkmanager; use it
       # directly instead of a third-party setup action (one less moving part).
+      # Preinstalled packages are reused; only missing ones are downloaded.
       - name: Install platform, build-tools and NDK
         run: |
           set -e
           SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/Android/sdk}}"
-          SDKMANAGER="$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -1)"
-          if [ -z "$SDKMANAGER" ]; then SDKMANAGER="$(command -v sdkmanager)"; fi
-          echo "Using $SDKMANAGER (SDK=$SDK, JAVA_HOME=$JAVA_HOME)"
-          java -version
-          "$SDKMANAGER" --version
-          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
-          "$SDKMANAGER" "platforms;Android-34" "build-tools;34.0.0" "ndk;27.2.12479018"
+          echo "SDK=$SDK JAVA_HOME=$JAVA_HOME"
+          echo "platforms:";  ls "$SDK/platforms"   2>/dev/null || true
+          echo "build-tools:"; ls "$SDK/build-tools" 2>/dev/null || true
+          echo "ndks:";        ls "$SDK/ndk"         2>/dev/null || true
+          need=()
+          [ -d "$SDK/platforms/Android-34" ]  || need+=("platforms;Android-34")
+          [ -d "$SDK/build-tools/34.0.0" ]    || need+=("build-tools;34.0.0")
+          [ -d "$SDK/ndk/27.2.12479018" ]     || need+=("ndk;27.2.12479018")
+          if [ "${#need[@]}" -gt 0 ]; then
+            SDKMANAGER="$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -1 || true)"
+            if [ -z "$SDKMANAGER" ]; then SDKMANAGER="$(command -v sdkmanager)"; fi
+            echo "Installing with $SDKMANAGER: ${need[*]}"
+            java -version
+            "$SDKMANAGER" --version
+            yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+            set +e
+            "$SDKMANAGER" "${need[@]}" > /tmp/sdk-install.log 2>&1
+            rc=$?
+            set -e
+            tail -n 20 /tmp/sdk-install.log || true
+            if [ "$rc" -ne 0 ]; then
+              tail -n 25 /tmp/sdk-install.log | sed 's/%/%25/g' | while IFS= read -r line; do echo "::error::sdkmanager: $line"; done
+              exit "$rc"
+            fi
+          else
+            echo "All SDK packages already present on the image."
+          fi
+          if [ -d "$SDK/ndk/27.2.12479018" ]; then NDKDIR="$SDK/ndk/27.2.12479018"; else NDKDIR="$(ls -d "$SDK"/ndk/* 2>/dev/null | sort -V | tail -1 || true)"; fi
+          echo "Using NDK: $NDKDIR"
           echo "Android_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
-          echo "Android_NDK_HOME=$SDK/ndk/27.2.12479018" >> "$GITHUB_ENV"
+          echo "Android_NDK_HOME=$NDKDIR" >> "$GITHUB_ENV"
 
       - name: Build APKs
         env:
