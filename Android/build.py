@@ -53,7 +53,7 @@ DIST = os.path.join(ROOT, "dist")
 # silicon of that ABI; hot paths dispatch at runtime (core/CpuFeatures.cpp).
 ABIS = {
     "arm64-v8a": {
-        "triple": "aarch64-linux-Android",
+        "triple": "aarch64-linux-android",
         "flags": ["-march=armv8-a"],
         "page16k": True,
         "code": 4,
@@ -70,13 +70,13 @@ ABIS = {
         "code": 3,
     },
     "x86_64": {
-        "triple": "x86_64-linux-Android",
+        "triple": "x86_64-linux-android",
         "flags": ["-march=x86-64", "-msse4.2", "-mpopcnt"],
         "page16k": True,
         "code": 2,
     },
     "x86": {
-        "triple": "i686-linux-Android",
+        "triple": "i686-linux-android",
         "flags": ["-march=i686", "-msse3", "-mfpmath=sse"],
         "page16k": False,
         "code": 1,
