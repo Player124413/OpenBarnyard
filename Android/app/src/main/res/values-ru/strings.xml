@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenBarnyard</string>
+    <string name="launcher_subtitle">Неофициальный Android-порт декомпиляции OpenBarnyard (движок TOSHI 2.0)</string>
+
+    <string name="btn_play">▶  Играть</string>
+    <string name="btn_touch_editor">🎮  Редактор сенсорного управления</string>
+    <string name="btn_settings">⚙  Графика и производительность</string>
+    <string name="btn_game_data">📁  Данные игры</string>
+    <string name="btn_diagnostics">🩺  Диагностика и логи</string>
+    <string name="btn_about">ℹ  О порте</string>
+
+    <string name="card_device">Ваше устройство</string>
+    <string name="card_game_data">Данные игры</string>
+    <string name="card_quick_start">Быстрый старт</string>
+    <string name="quick_start_text">1) Скопируйте файлы ПК-версии игры в папку GameData (см. «Данные игры»).\n2) Настройте «Графику и производительность» или оставьте «Авто».\n3) Расположите экранные кнопки под себя.\n4) Жмите «Играть»!</string>
+    <string name="footer_no_data">Файлов игры в приложении нет — нужна ваша собственная легальная копия Barnyard (ПК). Поддержите THQ Nordic и оригинальных разработчиков TOSHI!</string>
+    <string name="play_demo_note">Статус движка: Android-слой (лаунчер, GLES-рендерер, сенсорный ввод, оптимизации) fully работает — кнопка «Играть» запускает интерактивную техно-демо сцену фермы, подключённую к настоящим командам ввода движка. Оставшаяся работа по порту — игровой GL-рендерер TOSHI (шейдеры из DirectX 8, замена FMOD/Bink), см. Android/PORTING.md в репозитории.</string>
+
+    <string name="data_status_scanning">Сканирование…</string>
+    <string name="data_empty">Папка пуста — скопируйте сюда файлы ПК-версии игры.</string>
+    <string name="data_no_game">Данные Barnyard здесь не найдены (нет библиотек .trb).</string>
+    <string name="data_partial">Часть файлов игры найдена, но это не похоже на полную установку.</string>
+    <string name="data_complete">Похоже на полную установку Barnyard. ✔</string>
+    <string name="data_counts_format">Файлов: %1$d  ·  .trb: %2$d  ·  .ttl: %3$d  ·  .tkl: %4$d  ·  .bik: %5$d</string>
+    <string name="hint_missing_data_dir">На этом уровне нет папки Data/ — выберите папку, которая её содержит.</string>
+    <string name="hint_few_trb">Очень мало библиотек .trb — в полной установке их сотня.</string>
+    <string name="hint_missing_ttl">Не найдены текстурные библиотеки (.ttl).</string>
+    <string name="hint_has_exe">Найден Barnyard.exe — хороший знак, что это корень ПК-установки.</string>
+    <string name="hint_nested">Похоже, игра лежит во вложенной папке: %1$s</string>
+
+    <string name="device_format">%1$s\nSoC: %2$s\nCPU: %3$s · ядер: %4$d · RAM: %5$d МБ\nGLES %6$d.%7$d · Экран: %8$.0f Гц · Android API %9$d</string>
+    <string name="native_missing_toast">Нативная библиотека недоступна для ABI этого устройства — лаунчер продолжит работу, но игра не запустится.</string>
+    <string name="saved_toast">Сохранено ✔</string>
+    <string name="copied_toast">Скопировано в буфер обмена</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Графика и производительность</string>
+    <string name="set_preset">Пресет</string>
+    <string name="set_resolution">Разрешение рендера: %1$d%%</string>
+    <string name="set_min_resolution">Нижняя граница дин. разрешения: %1$d%%</string>
+    <string name="set_dynamic_res">Динамическое разрешение (держит FPS на слабых GPU)</string>
+    <string name="set_fps_limit">Ограничение кадров</string>
+    <string name="set_vsync">Вертикальная синхронизация (V-Sync)</string>
+    <string name="set_msaa">Сглаживание (MSAA)</string>
+    <string name="set_texture_q">Качество текстур</string>
+    <string name="set_shadow_q">Качество теней</string>
+    <string name="set_show_fps">Показывать счётчик FPS</string>
+    <string name="set_haptics">Вибрация сенсорных кнопок</string>
+    <string name="set_cam_sens">Чувствительность камеры: %1$.2f</string>
+    <string name="set_invert_y">Инвертировать ось Y камеры</string>
+    <string name="btn_reset_auto">Сбросить на «Авто» (рекомендуется)</string>
+    <string name="btn_save">Сохранить</string>
+    <string name="fps_unlimited">Без ограничения</string>
+    <string name="quality_0">Низкое</string>
+    <string name="quality_1">Среднее</string>
+    <string name="quality_2">Высокое</string>
+    <string name="quality_3">Ультра</string>
+    <string name="msaa_off">Выкл</string>
+    <string-array name="preset_names">
+        <item>Авто (рекомендуется)</item>
+        <item>Картошка — самые слабые телефоны</item>
+        <item>Баланс</item>
+        <item>Качество</item>
+        <item>Ультра</item>
+        <item>Пользовательский</item>
+    </string-array>
+
+    <!-- Touch editor -->
+    <string name="editor_title">Редактор сенсорного управления</string>
+    <string name="ed_new">Новый</string>
+    <string name="ed_save">Сохранить</string>
+    <string name="ed_delete_profile">Удалить профиль</string>
+    <string name="ed_add_button">＋ Кнопка</string>
+    <string name="ed_duplicate">Дублировать</string>
+    <string name="ed_delete_element">Удалить</string>
+    <string name="ed_mirror">Отразить (для левшей)</string>
+    <string name="ed_snap">Прилипание к сетке</string>
+    <string name="ed_dynamic_stick">Плавающий стик</string>
+    <string name="ed_reset">Сброс по умолчанию</string>
+    <string name="ed_export">Экспорт</string>
+    <string name="ed_import">Импорт</string>
+    <string name="ed_done">Готово</string>
+    <string name="ed_binding">Назначение</string>
+    <string name="ed_size">Размер</string>
+    <string name="ed_opacity">Прозрачность</string>
+    <string name="ed_selected_none">Коснитесь элемента, чтобы выбрать, тяните — чтобы двигать.</string>
+    <string name="ed_selected_format">Выбрано: %1$s</string>
+    <string name="ed_profile_name_hint">Имя профиля</string>
+    <string name="ed_element_stick">Стик движения</string>
+    <string name="ed_element_camera">Область камеры</string>
+    <string name="ed_import_failed">Не удалось импортировать этот файл профиля.</string>
+    <string name="ed_new_profile">Новый профиль</string>
+
+    <!-- Data -->
+    <string name="data_title">Данные игры</string>
+    <string name="data_instructions">Скопируйте содержимое вашей ПК-установки Barnyard (папку, где лежат Data/ и Barnyard.exe) в папку ниже через USB или любой файловый менеджер — либо выберите существующую папку кнопкой. Ничего не скачивается и не отправляется с устройства.</string>
+    <string name="data_current_path">Текущее расположение:</string>
+    <string name="btn_pick_folder">Выбрать папку…</string>
+    <string name="btn_default_folder">Папка по умолчанию</string>
+    <string name="btn_rescan">Пересканировать</string>
+    <string name="btn_use_subfolder">Использовать подпапку: %1$s</string>
+    <string name="data_engine_note">Сейчас данные только проверяются (имена и количество файлов); движок будет читать их по мере готовности GL-рендерера TOSHI. Ваши файлы никогда не изменяются.</string>
+
+    <!-- Diagnostics -->
+    <string name="diag_title">Диагностика</string>
+    <string name="btn_refresh">Обновить</string>
+    <string name="btn_copy">Копировать отчёт</string>
+    <string name="btn_clear_log">Очистить лог лаунчера</string>
+    <string name="diag_hint">Если что-то работает не так, скопируйте этот отчёт в issue на GitHub — в нём только CPU/GPU и настройки (без личных данных).</string>
+
+    <!-- Game -->
+    <string name="game_demo_banner">Техно-демо фермы · порт движка в процессе — управление живое, попробуйте стик и кнопки!</string>
+    <string name="pause_title">Пауза</string>
+    <string name="btn_resume">Продолжить</string>
+    <string name="btn_edit_controls">Настроить управление</string>
+    <string name="btn_exit_launcher">Выйти в лаунчер</string>
+    <string name="fps_format">%1$.0f FPS · разреш. %2$d%%</string>
+
+    <string name="about_text">OpenBarnyard — открытая декомпиляция игры Barnyard (2006) и движка TOSHI 2.0 студии Blue Tongue Entertainment. Этот Android-пакет добавляет поверх кодовой базы:\n\n• полноценный лаунчер с авто-настройкой под устройство\n• редактируемую систему сенсорного управления на настоящих id команд движка (AInputCommand)\n• нативное GLES2/3-ядро с динамическим разрешением, фреймпейсингом и рантайм-диспетчером SIMD, собранное для arm64-v8a, armeabi-v7a (32 бита), x86_64 и x86\n• управление данными вашей собственной ПК-копии\n\nОставшийся шаг к полному игровому процессу — довести GL-рендерер TOSHI (ПК-шейдеры написаны для DirectX 8) и заменить FMOD/Bink: см. Android/PORTING.md. Движок © THQ Nordic / оригинальные авторы; проект для образования и сохранения наследия. Не используйте его для пиратства.</string>
+</resources>

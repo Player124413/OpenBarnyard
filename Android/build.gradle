@@ -1,0 +1,5 @@
+// Root Gradle file for the optional Android Studio path.
+// The reference CI build is build.py (no Gradle/Maven needed); see README.md.
+plugins {
+    id "com.android.application" version "8.5.2" apply false
+}
