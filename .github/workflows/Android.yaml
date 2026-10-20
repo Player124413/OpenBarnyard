@@ -72,11 +72,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      # JDK 21: current cmdline-tools/sdkmanager require it. Our code still
+      # compiles to Java 8 bytecode (see build.py strategies), so this does
+      # not raise the app's requirements in any way.
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
       # GitHub's ubuntu images ship the Android SDK with sdkmanager; use it
       # directly instead of a third-party setup action (one less moving part).
@@ -87,6 +90,8 @@ jobs:
           SDKMANAGER="$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -1)"
           if [ -z "$SDKMANAGER" ]; then SDKMANAGER="$(command -v sdkmanager)"; fi
           echo "Using $SDKMANAGER (SDK=$SDK, JAVA_HOME=$JAVA_HOME)"
+          java -version
+          "$SDKMANAGER" --version
           yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
           "$SDKMANAGER" "platforms;Android-34" "build-tools;34.0.0" "ndk;27.2.12479018"
           echo "Android_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
