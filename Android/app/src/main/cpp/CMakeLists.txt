@@ -34,7 +34,7 @@ if(ANDROID_ABI STREQUAL "arm64-v8a")
     target_link_options(openbarnyard PRIVATE -Wl,-z,max-page-size=16384) # 16 KiB pages (Android 15+)
 elseif(ANDROID_ABI STREQUAL "armeabi-v7a")
     target_compile_options(openbarnyard PRIVATE
-        -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d32 -mthumb)
+        -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3 -mthumb)
     # The dispatch TU gets NEON intrinsics only (no autovectorisation), so
     # baseline non-NEON devices stay safe; see core/CpuFeatures.cpp.
     set_source_files_properties(core/CpuFeatures.cpp PROPERTIES

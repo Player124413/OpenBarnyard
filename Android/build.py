@@ -61,7 +61,7 @@ ABIS = {
     "armeabi-v7a": {
         "triple": "armv7a-linux-androideabi",
         # Baseline VFPv3 (no NEON assumption -> runs even on Tegra-2 era SoCs).
-        "flags": ["-march=armv7-a", "-mfloat-abi=softfp", "-mfpu=vfpv3-d32", "-mthumb"],
+        "flags": ["-march=armv7-a", "-mfloat-abi=softfp", "-mfpu=vfpv3", "-mthumb"],
         # ...but the NEON matrix path lives in CpuFeatures.cpp, compiled with
         # NEON enabled + autovectorisation off (so the only NEON instructions
         # are the intrinsics we explicitly dispatch to after HWCAP probing).
