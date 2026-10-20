@@ -23,7 +23,7 @@ Usage:
   python3 Android/build.py --test       run JVM unit tests only
   python3 Android/build.py --abis arm64-v8a,x86_64
 Env:
-  Android_SDK_ROOT / Android_HOME, Android_NDK_HOME / NDK_HOME, JAVA_HOME
+  ANDROID_SDK_ROOT / ANDROID_HOME, ANDROID_NDK_HOME / NDK_HOME, JAVA_HOME
   OB_KEYSTORE, OB_KEYSTORE_PASS, OB_KEY_ALIAS, OB_KEY_PASS  release signing
   OB_NO_LTO=1                           disable thin LTO
 """
@@ -119,23 +119,23 @@ def version_key(name):
 
 
 def find_sdk():
-    for env in ("Android_SDK_ROOT", "Android_HOME"):
+    for env in ("ANDROID_SDK_ROOT", "ANDROID_HOME"):
         if os.environ.get(env) and os.path.isdir(os.environ[env]):
             return os.environ[env]
     home = os.path.expanduser("~")
     candidates = [
         os.path.join(home, "Android", "Sdk"),
-        "/usr/local/lib/Android/sdk",
+        "/usr/local/lib/android/sdk",
         os.path.join(home, "Library", "Android", "sdk"),
     ]
     for c in candidates:
         if os.path.isdir(c):
             return c
-    die("Android SDK not found. Set Android_SDK_ROOT.")
+    die("Android SDK not found. Set ANDROID_SDK_ROOT.")
 
 
 def find_ndk(sdk):
-    for env in ("Android_NDK_HOME", "NDK_HOME", "Android_NDK_ROOT"):
+    for env in ("ANDROID_NDK_HOME", "NDK_HOME", "ANDROID_NDK_ROOT"):
         if os.environ.get(env) and os.path.isdir(os.environ[env]):
             return os.environ[env]
     ndk_dir = os.path.join(sdk, "ndk")
@@ -171,20 +171,29 @@ def find_build_tools(sdk):
 
 def find_android_jar(sdk):
     platforms = os.path.join(sdk, "platforms")
-    candidates = []
+    candidates = []  # (version_key, is_stable_name, jar)
     if os.path.isdir(platforms):
         for name in os.listdir(platforms):
-            jar = os.path.join(platforms, name, "Android.jar")
+            jar = os.path.join(platforms, name, "android.jar")
             if os.path.isfile(jar):
-                candidates.append((version_key(name), jar))
+                # Stable names look like "android-34" or "android-36.1";
+                # extension/beta dirs ("android-34-ext10", "-beta3") sort later.
+                stable = re.fullmatch(r"android-\d+(\.\d+)?", name) is not None
+                candidates.append((version_key(name), stable, jar))
     if not candidates:
-        die("no Android platform (Android.jar) found in SDK")
-    candidates.sort()
-    # Prefer TARGET_SDK exactly, else take the newest available.
-    for key, jar in candidates:
-        if key and key[0] == TARGET_SDK:
-            return jar
-    return candidates[-1][1]
+        die("no Android platform (android.jar) found in SDK")
+    candidates.sort(key=lambda c: (c[0], c[1]))
+    # Prefer TARGET_SDK exactly (stable names first), else newest stable,
+    # else newest available. Newer android.jar compiles older targetSdk fine.
+    for stable_only in (True, False):
+        for key, stable, jar in candidates:
+            if key and key[0] == TARGET_SDK and (stable or not stable_only):
+                if not stable_only or stable:
+                    return jar
+    stable_jars = [c for c in candidates if c[1]]
+    if stable_jars:
+        return stable_jars[-1][2]
+    return candidates[-1][2]
 
 
 def java_tool(name, java_home):
@@ -267,7 +276,7 @@ def compile_native(ndk, abi, cfg, out_dir):
         link.append("-Wl,-z,max-page-size=16384")
     if use_lto:
         link.append("-flto=thin")
-    link += objects + ["-lEGL", "-lGLESv2", "-lAndroid", "-llog", "-ldl", "-lm", "-o", so_path]
+    link += objects + ["-lEGL", "-lGLESv2", "-landroid", "-llog", "-ldl", "-lm", "-o", so_path]
     run(link)
 
     symbols_dir = os.path.join(BUILD, "symbols", abi)
@@ -279,16 +288,16 @@ def compile_native(ndk, abi, cfg, out_dir):
     return so_path
 
 
-def compile_java(javac, Android_jar, sources, out_dir, env):
+def compile_java(javac, platform_jar, sources, out_dir, env):
     os.makedirs(out_dir, exist_ok=True)
     list_file = os.path.join(BUILD, "sources.txt")
     with open(list_file, "w") as f:
         for s in sources:
             f.write('"' + s.replace("\\", "/") + '"\n')
     attempts = [
-        [javac, "-encoding", "UTF-8", "--release", "8", "-cp", Android_jar, "-d", out_dir, "@" + list_file],
-        [javac, "-encoding", "UTF-8", "-source", "8", "-target", "8", "-bootclasspath", Android_jar, "-cp", Android_jar, "-d", out_dir, "@" + list_file],
-        [javac, "-encoding", "UTF-8", "-source", "11", "-target", "11", "-cp", Android_jar, "-d", out_dir, "@" + list_file],
+        [javac, "-encoding", "UTF-8", "--release", "8", "-cp", platform_jar, "-d", out_dir, "@" + list_file],
+        [javac, "-encoding", "UTF-8", "-source", "8", "-target", "8", "-bootclasspath", platform_jar, "-cp", platform_jar, "-d", out_dir, "@" + list_file],
+        [javac, "-encoding", "UTF-8", "-source", "11", "-target", "11", "-cp", platform_jar, "-d", out_dir, "@" + list_file],
     ]
     for cmd in attempts:
         if run_try(cmd, env=env):
@@ -314,7 +323,7 @@ def make_keystore(env, java_home):
     return (ks, "Android", "Androiddebugkey", "Android")
 
 
-def package_apk(variant, abi_list, native_libs, dex_dir, tools, Android_jar, env, keystore):
+def package_apk(variant, abi_list, native_libs, dex_dir, tools, platform_jar, env, keystore):
     aapt2, d8, zipalign, apksigner = tools
     work = os.path.join(BUILD, "apk-" + variant)
     os.makedirs(work, exist_ok=True)
@@ -323,7 +332,7 @@ def package_apk(variant, abi_list, native_libs, dex_dir, tools, Android_jar, env
     vc = VERSION_CODE * 10 + abi_code
 
     gen_dir = os.path.join(BUILD, "gen")
-    cmd = [aapt2, "link", "-o", unsigned, "-I", Android_jar,
+    cmd = [aapt2, "link", "-o", unsigned, "-I", platform_jar,
            "--manifest", os.path.join(SRC_MAIN, "AndroidManifest.xml"),
            "--java", gen_dir, "--min-sdk-version", str(MIN_SDK),
            "--target-sdk-version", str(TARGET_SDK),
@@ -367,10 +376,10 @@ def build(abis, clean=True):
     sdk = find_sdk()
     ndk = find_ndk(sdk)
     bt = find_build_tools(sdk)
-    Android_jar = find_android_jar(sdk)
+    platform_jar = find_android_jar(sdk)
     java_home = find_java_home()
     log("SDK: %s\n[build] NDK: %s\n[build] build-tools: %s\n[build] platform: %s\n[build] JDK: %s"
-        % (sdk, ndk, bt, Android_jar, java_home))
+        % (sdk, ndk, bt, platform_jar, java_home))
 
     env = os.environ.copy()
     if java_home:
@@ -397,7 +406,7 @@ def build(abis, clean=True):
 
     # 2) Generate R.java via a throwaway link, then compile Java once.
     gen_dir = os.path.join(BUILD, "gen")
-    run([aapt2, "link", "-o", os.path.join(BUILD, "rgen.apk"), "-I", Android_jar,
+    run([aapt2, "link", "-o", os.path.join(BUILD, "rgen.apk"), "-I", platform_jar,
          "--manifest", os.path.join(SRC_MAIN, "AndroidManifest.xml"),
          "--java", gen_dir, "--min-sdk-version", str(MIN_SDK),
          "--target-sdk-version", str(TARGET_SDK),
@@ -410,7 +419,7 @@ def build(abis, clean=True):
     javac = java_tool("javac", java_home)
     classes_dir = os.path.join(BUILD, "classes")
     sources = collect_files(os.path.join(SRC_MAIN, "java"), ".java") + [r_java]
-    compile_java(javac, Android_jar, sources, classes_dir, env)
+    compile_java(javac, platform_jar, sources, classes_dir, env)
 
     # 3) Dex
     dex_dir = os.path.join(BUILD, "dex")
@@ -418,7 +427,7 @@ def build(abis, clean=True):
     class_files = collect_files(classes_dir, ".class")
     if not class_files:
         die("javac produced no .class files")
-    run([d8, "--release", "--min-api", str(MIN_SDK), "--lib", Android_jar,
+    run([d8, "--release", "--min-api", str(MIN_SDK), "--lib", platform_jar,
          "--output", dex_dir] + class_files, env=env)
 
     # 4) Native libraries
@@ -432,9 +441,9 @@ def build(abis, clean=True):
     keystore = make_keystore(env, java_home)
     tools = (aapt2, d8, zipalign, apksigner)
     outputs = []
-    outputs.append(package_apk("universal", abis, native_libs, dex_dir, tools, Android_jar, env, keystore))
+    outputs.append(package_apk("universal", abis, native_libs, dex_dir, tools, platform_jar, env, keystore))
     for abi in abis:
-        outputs.append(package_apk(abi, [abi], native_libs, dex_dir, tools, Android_jar, env, keystore))
+        outputs.append(package_apk(abi, [abi], native_libs, dex_dir, tools, platform_jar, env, keystore))
 
     # 6) Symbols + checksums
     symbols_zip = os.path.join(DIST, "OpenBarnyard-v%s-symbols.zip" % VERSION_NAME)
@@ -454,6 +463,30 @@ def build(abis, clean=True):
         log("  %s (%d bytes)" % (os.path.basename(path), os.path.getsize(path)))
 
 
+def check_env():
+    """Verify SDK/NDK/JDK discovery without building (used by CI)."""
+    sdk = find_sdk()
+    ndk = find_ndk(sdk)
+    bt = find_build_tools(sdk)
+    jar = find_android_jar(sdk)
+    java_home = find_java_home()
+    log("SDK: " + sdk)
+    log("NDK: " + ndk)
+    log("build-tools: " + bt)
+    log("platform jar: " + jar)
+    log("JDK: " + str(java_home))
+    suffix = ".bat" if platform.system() == "Windows" else ""
+    for tool in ("aapt2", "d8", "zipalign", "apksigner"):
+        exe = os.path.join(bt, tool + (suffix if tool in ("d8", "apksigner") else (".exe" if suffix else "")))
+        if not os.path.isfile(exe):
+            die("build tool not found: " + exe)
+        log("tool ok: " + exe)
+    triplet = os.path.join(ndk, "toolchains", "llvm", "prebuilt")
+    if not os.path.isdir(triplet):
+        die("NDK llvm toolchain dir missing: " + triplet)
+    log("environment OK")
+
+
 def run_jvm_tests():
     java_home = find_java_home()
     javac = java_tool("javac", java_home)
@@ -470,6 +503,7 @@ def run_jvm_tests():
 def main():
     parser = argparse.ArgumentParser(description="OpenBarnyard Android builder")
     parser.add_argument("--test", action="store_true", help="run JVM unit tests and exit")
+    parser.add_argument("--check-env", action="store_true", help="verify SDK/NDK/JDK discovery and exit")
     parser.add_argument("--abis", default=",".join(ABIS.keys()),
                         help="comma-separated ABIs to build (default: all)")
     parser.add_argument("--no-clean", action="store_true")
@@ -477,6 +511,9 @@ def main():
 
     if args.test:
         run_jvm_tests()
+        return
+    if args.check_env:
+        check_env()
         return
     abis = [a.strip() for a in args.abis.split(",") if a.strip()]
     for abi in abis:

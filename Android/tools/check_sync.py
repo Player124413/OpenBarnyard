@@ -78,6 +78,26 @@ def engine_name_for_cpp(cpp_name):
     return special.get(cpp_name, cpp_name)
 
 
+def check_case_integrity():
+    # The platform name is case-sensitive in env vars, file names and
+    # linker flags; a past tooling glitch silently title-cased some
+    # literals and broke SDK discovery. Guard the load-bearing ones.
+    word = "".join(map(chr, [97, 110, 100, 114, 111, 105, 100]))
+    cap = word.capitalize()
+    upper = word.upper()
+    build = read("Android/build.py")
+    check((word + ".jar") in build, "build.py: lowercase platform jar name missing")
+    check((cap + ".jar") not in build, "build.py: wrong-case platform jar name")
+    check(("-l" + word) in build, "build.py: lowercase -l flag for native window lib missing")
+    check((upper + "_SDK_ROOT") in build, "build.py: uppercase SDK env var missing")
+    check((cap + "_SDK_ROOT") not in build, "build.py: wrong-case SDK env var")
+    cmake = read("Android/app/src/main/cpp/CMakeLists.txt")
+    check((" " + word + " log") in cmake, "CMakeLists: lowercase native window lib missing")
+    wf = read(".github/workflows/Android.yaml")
+    check((cap + "_SDK_ROOT") not in wf, "workflow: wrong-case SDK env var")
+    check(("/usr/local/lib/" + word + "/sdk") in wf, "workflow: lowercase fallback SDK path missing")
+
+
 def main():
     engine = parse_engine_commands()
     check(len(engine) >= 40, "engine command table suspiciously small: %d" % len(engine))
@@ -120,6 +140,8 @@ def main():
           % (sorted(java_natives - cpp_exports), sorted(cpp_exports - java_natives)))
 
     # TouchProfile fields present in both serialiser and parser
+    check_case_integrity()
+
     tp = read("Android/app/src/main/java/org/opentoshi/openbarnyard/core/TouchProfile.java")
     for field in ("id", "type", "command", "x", "y", "size", "opacity", "elements", "version"):
         count = tp.count('"' + field + '"') + tp.count('\\"' + field + '\\"')
@@ -135,3 +157,4 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+

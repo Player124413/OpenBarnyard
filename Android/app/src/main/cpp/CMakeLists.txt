@@ -57,4 +57,4 @@ target_link_options(openbarnyard PRIVATE
 
 # -static-libstdc++ equivalent: AGP passes -DANDROID_STL=c++_static via
 # arguments in build.gradle, so no libc++_shared.so needs shipping.
-target_link_libraries(openbarnyard PRIVATE EGL GLESv2 Android log dl m)
+target_link_libraries(openbarnyard PRIVATE EGL GLESv2 android log dl m)
