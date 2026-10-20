@@ -78,13 +78,19 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: Android-actions/setup-Android@v3
-
+      # GitHub's ubuntu images ship the Android SDK with sdkmanager; use it
+      # directly instead of a third-party setup action (one less moving part).
       - name: Install platform, build-tools and NDK
         run: |
-          sdkmanager "platforms;Android-34" "build-tools;34.0.0" "ndk;27.2.12479018"
-          echo "Android_NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.2.12479018" >> "$GITHUB_ENV"
+          set -e
+          SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/Android/sdk}}"
+          SDKMANAGER="$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$SDKMANAGER" ]; then SDKMANAGER="$(command -v sdkmanager)"; fi
+          echo "Using $SDKMANAGER (SDK=$SDK, JAVA_HOME=$JAVA_HOME)"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" "platforms;Android-34" "build-tools;34.0.0" "ndk;27.2.12479018"
+          echo "Android_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "Android_NDK_HOME=$SDK/ndk/27.2.12479018" >> "$GITHUB_ENV"
 
       - name: Build APKs
         env:
