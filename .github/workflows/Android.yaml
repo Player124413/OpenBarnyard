@@ -81,51 +81,79 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      # GitHub's ubuntu images ship the Android SDK with sdkmanager; use it
-      # directly instead of a third-party setup action (one less moving part).
-      # Preinstalled packages are reused; only missing ones are downloaded.
-      - name: Install platform, build-tools and NDK
+      # GitHub's ubuntu images ship an Android SDK. Google's repository no
+      # longer serves some legacy package names (e.g. platforms;Android-34),
+      # so the strategy is: reuse whatever is preinstalled (build.py accepts
+      # any platform >= 34 and picks a sane NDK), and only ask sdkmanager for
+      # what is truly missing — non-fatally, then re-verify.
+      - name: Ensure Android SDK packages
         run: |
           set -e
           SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/Android/sdk}}"
           echo "SDK=$SDK JAVA_HOME=$JAVA_HOME"
-          echo "platforms:";  ls "$SDK/platforms"   2>/dev/null || true
+          echo "platforms:";   ls "$SDK/platforms"   2>/dev/null || true
           echo "build-tools:"; ls "$SDK/build-tools" 2>/dev/null || true
           echo "ndks:";        ls "$SDK/ndk"         2>/dev/null || true
-          need=()
-          [ -d "$SDK/platforms/Android-34" ]  || need+=("platforms;Android-34")
-          [ -d "$SDK/build-tools/34.0.0" ]    || need+=("build-tools;34.0.0")
-          [ -d "$SDK/ndk/27.2.12479018" ]     || need+=("ndk;27.2.12479018")
-          if [ "${#need[@]}" -gt 0 ]; then
+          cat > /tmp/sdk_check.py <<'PYEOF'
+          import os, re, sys
+          sdk = sys.argv[1]
+          def vkey(name):
+              return [int(x) for x in re.findall(r"\d+", name)]
+          need, have_platform, have_tools, ndk_choice = [], False, False, ""
+          pdir = os.path.join(sdk, "platforms")
+          if os.path.isdir(pdir):
+              for name in os.listdir(pdir):
+                  m = re.match(r"Android-(\d+)", name)
+                  if m and int(m.group(1)) >= 34 and os.path.isfile(os.path.join(pdir, name, "Android.jar")):
+                      have_platform = True
+          if not have_platform:
+              need.append("platforms;Android-34")
+          bdir = os.path.join(sdk, "build-tools")
+          if os.path.isdir(bdir):
+              have_tools = any(os.path.isfile(os.path.join(bdir, d, "aapt2")) for d in os.listdir(bdir))
+          if not have_tools:
+              need.append("build-tools;34.0.0")
+          ndir = os.path.join(sdk, "ndk")
+          ndks = sorted(os.listdir(ndir), key=vkey) if os.path.isdir(ndir) else []
+          def pick(cands):
+              for pref in ("27.2.12479018",):
+                  if pref in cands: return pref
+              for major in ("27.", "26.", "25.", "24.", "23."):
+                  hits = [c for c in cands if c.startswith(major)]
+                  if hits: return hits[-1]
+              return cands[-1] if cands else ""
+          ndk_choice = pick(ndks)
+          if not ndks:
+              need.append("ndk;27.2.12479018")
+          elif ndk_choice != "27.2.12479018":
+              need.append("ndk;27.2.12479018")  # preferred, but non-fatal if it fails
+          open("/tmp/sdk_need.txt", "w").write("\n".join(need))
+          open("/tmp/sdk_state.txt", "w").write(f"platform={have_platform} tools={have_tools} ndk={ndk_choice}\n")
+          print("need:", need, "| state:", open("/tmp/sdk_state.txt").read().strip())
+          PYEOF
+          python3 /tmp/sdk_check.py "$SDK"
+          if [ -s /tmp/sdk_need.txt ]; then
             SDKMANAGER="$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -1 || true)"
-            if [ -z "$SDKMANAGER" ]; then SDKMANAGER="$(command -v sdkmanager)"; fi
-            echo "Installing with $SDKMANAGER: ${need[*]}"
-            echo "::notice::sdkmanager install candidates: ${need[*]} via $SDKMANAGER"
-            java -version
-            "$SDKMANAGER" --version
-            yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
-            set +e
-            "$SDKMANAGER" "${need[@]}" > /tmp/sdk-install.log 2>&1
-            rc=$?
-            set -e
-            tr '\r' '\n' < /tmp/sdk-install.log | grep -vE '^\s*$' | tail -n 20 || true
-            if [ "$rc" -ne 0 ]; then
-              echo "--- sdkmanager --list_installed ---"
-              "$SDKMANAGER" --list_installed 2>/dev/null | head -n 60 || true
-              tr '\r' '\n' < /tmp/sdk-install.log > /tmp/sdk-clean.log
-              { grep -inE 'error|failed|warning|exception|unable|not found|invalid|requires|UnsupportedClassVersion' /tmp/sdk-clean.log | head -n 20
-                echo "----- last lines -----"
-                grep -vE '^\s*$|Loading|Fetching|Downloading|Unzipping|\[.*=.*\]' /tmp/sdk-clean.log | tail -n 12
-              } | sed 's/%/%25/g' | cut -c1-300 | while IFS= read -r line; do echo "::error::sdkmanager: $line"; done
-              exit "$rc"
+            if [ -z "$SDKMANAGER" ]; then SDKMANAGER="$(command -v sdkmanager || true)"; fi
+            if [ -n "$SDKMANAGER" ] && [ -x "$SDKMANAGER" ]; then
+              echo "Trying sdkmanager for: $(tr '\n' ' ' < /tmp/sdk_need.txt)"
+              yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+              # shellcheck disable=SC2046
+              "$SDKMANAGER" $(cat /tmp/sdk_need.txt) > /tmp/sdk-install.log 2>&1                 || echo "::warning::sdkmanager could not install some packages; will check if preinstalled ones suffice"
+              tr '\r' '\n' < /tmp/sdk-install.log | grep -vE '^\s*$' | tail -n 8 || true
+            else
+              echo "::warning::sdkmanager not found; relying on preinstalled SDK only"
             fi
-          else
-            echo "All SDK packages already present on the image."
+            python3 /tmp/sdk_check.py "$SDK"
           fi
-          if [ -d "$SDK/ndk/27.2.12479018" ]; then NDKDIR="$SDK/ndk/27.2.12479018"; else NDKDIR="$(ls -d "$SDK"/ndk/* 2>/dev/null | sort -V | tail -1 || true)"; fi
-          echo "Using NDK: $NDKDIR"
+          grep -q "platform=True" /tmp/sdk_state.txt || { echo "::error::No Android platform >= 34 available"; exit 1; }
+          grep -q "tools=True" /tmp/sdk_state.txt || { echo "::error::No build-tools (aapt2) available"; exit 1; }
+          NDKNAME="$(sed -n 's/.*ndk=//p' /tmp/sdk_state.txt)"
+          if [ -d "$SDK/ndk/27.2.12479018" ]; then NDKNAME="27.2.12479018"; fi
+          [ -n "$NDKNAME" ] || { echo "::error::No NDK available"; exit 1; }
+          echo "Using SDK=$SDK NDK=$SDK/ndk/$NDKNAME"
           echo "Android_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
-          echo "Android_NDK_HOME=$NDKDIR" >> "$GITHUB_ENV"
+          echo "Android_NDK_HOME=$SDK/ndk/$NDKNAME" >> "$GITHUB_ENV"
 
       - name: Build APKs
         env:

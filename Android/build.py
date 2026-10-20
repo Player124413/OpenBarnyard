@@ -142,6 +142,16 @@ def find_ndk(sdk):
     if os.path.isdir(ndk_dir):
         versions = sorted(os.listdir(ndk_dir), key=version_key)
         if versions:
+            # Prefer the CI-tested NDK, then the newest of each known-good
+            # major line, then anything. (Newer NDKs keep changing target
+            # support; our flags were validated against r27 LTS.)
+            for wanted in ("27.2.12479018",):
+                if wanted in versions:
+                    return os.path.join(ndk_dir, wanted)
+            for major in ("27.", "26.", "25.", "24.", "23."):
+                hits = [v for v in versions if v.startswith(major)]
+                if hits:
+                    return os.path.join(ndk_dir, hits[-1])
             return os.path.join(ndk_dir, versions[-1])
     bundle = os.path.join(sdk, "ndk-bundle")
     if os.path.isdir(bundle):
