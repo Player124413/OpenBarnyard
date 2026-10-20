@@ -1,0 +1,227 @@
+name: Android
+
+on:
+  push:
+    paths:
+      - "Android/**"
+      - ".github/workflows/Android.yaml"
+  pull_request:
+    paths:
+      - "Android/**"
+      - ".github/workflows/Android.yaml"
+  workflow_dispatch:
+
+concurrency:
+  group: Android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Unit tests (host C++ + JVM + sync)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Native core tests (gcc, -Werror) + contract sync checks
+        run: sh Android/tools/run_host_tests.sh
+
+      - name: Native core tests (clang)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq clang > /dev/null
+          CXX=clang++ sh Android/tools/run_host_tests.sh
+
+      - name: Launcher core tests (plain JVM)
+        run: python3 Android/build.py --test
+
+      - name: Java syntax sweep (javalang)
+        run: |
+          pip install -q javalang
+          python3 - <<'EOF'
+          import glob, sys
+          import javalang
+          bad = []
+          for f in sorted(glob.glob('Android/**/*.java', recursive=True)):
+              try:
+                  javalang.parse.parse(open(f, encoding='utf-8').read())
+              except Exception as exc:
+                  bad.append((f, exc))
+          for f, exc in bad:
+              print('PARSE FAIL', f, exc)
+          print('parsed OK' if not bad else 'FAILURES')
+          sys.exit(1 if bad else 0)
+          EOF
+
+  build:
+    name: Build APKs (all ABIs)
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # JDK 21: current cmdline-tools/sdkmanager require it. Our code still
+      # compiles to Java 8 bytecode (see build.py strategies), so this does
+      # not raise the app's requirements in any way.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # GitHub's ubuntu images ship an Android SDK. Google's repository no
+      # longer serves some legacy package names, so the strategy is: reuse
+      # whatever is preinstalled, optionally try to fetch the preferred NDK,
+      # and let build.py (which has careful discovery logic) verify the env.
+      - name: Ensure Android SDK packages
+        run: |
+          set -e
+          SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          echo "::notice::SDK=$SDK platforms: $(ls "$SDK/platforms" 2>/dev/null | tr '\n' ' ')"
+          echo "::notice::build-tools: $(ls "$SDK/build-tools" 2>/dev/null | tr '\n' ' ') ndk: $(ls "$SDK/ndk" 2>/dev/null | tr '\n' ' ')"
+          if [ ! -d "$SDK/ndk/27.2.12479018" ]; then
+            SDKMANAGER="$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -1 || true)"
+            if [ -n "$SDKMANAGER" ] && [ -x "$SDKMANAGER" ]; then
+              (yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true)
+              "$SDKMANAGER" "ndk;27.2.12479018" >/tmp/ndk-install.log 2>&1 || echo "::warning::preferred NDK 27.2 not installable; build.py will pick the best preinstalled NDK"
+            fi
+          fi
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          python3 Android/build.py --check-env
+
+      - name: Build APKs
+        env:
+          # Optional release signing (falls back to a debug keystore when unset)
+          OB_KEYSTORE: ${{ secrets.OB_KEYSTORE_PATH }}
+          OB_KEYSTORE_PASS: ${{ secrets.OB_KEYSTORE_PASS }}
+          OB_KEY_ALIAS: ${{ secrets.OB_KEY_ALIAS }}
+          OB_KEY_PASS: ${{ secrets.OB_KEY_PASS }}
+        run: |
+          set +e
+          python3 -u Android/build.py 2>&1 | tee /tmp/build.log
+          rc=${PIPESTATUS[0]}
+          if [ "$rc" -ne 0 ]; then
+            { grep -inE 'error|failed|exception|Traceback|FAILURE|invalid|not found|No such' /tmp/build.log | head -n 30
+              echo "----- tail -----"
+              tail -n 25 /tmp/build.log
+            } | sed 's/%/%25/g' | cut -c1-320 | while IFS= read -r line; do echo "::error::build: $line"; done
+          fi
+          exit "$rc"
+
+      - name: Verify APK structure & ELF ABIs
+        run: python3 Android/verify_apk.py Android/dist/*.apk
+
+      - name: aapt2 badging sanity
+        run: |
+          AAPT2=$(ls "$ANDROID_SDK_ROOT"/build-tools/*/aapt2 | sort -V | tail -1)
+          for apk in Android/dist/*.apk; do
+            echo "== $apk"
+            "$AAPT2" dump badging "$apk" | grep -E "^(package|application:|launchable-activity|native-code|sdkVersion|targetSdkVersion)" || true
+          done
+
+      - name: Summary
+        run: |
+          {
+            echo "## OpenBarnyard Android build"
+            echo '| Artifact | Size |'
+            echo '|---|---|'
+            for f in Android/dist/*; do
+              echo "| $(basename "$f") | $(du -h "$f" | cut -f1) |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: openbarnyard-Android
+          path: Android/dist/*
+          retention-days: 30
+
+  emulator-smoke:
+    name: Emulator smoke test
+    needs: build
+    # Pinned: Android-emulator-runner relies on avdmanager/sdkmanager as
+    # shipped in older cmdline-tools; the ubuntu-26 image breaks it.
+    runs-on: ubuntu-24.04
+    # Best-effort: emulators on shared runners can be flaky/slow. The build
+    # and unit-test jobs above are the gating signal; this job adds a real
+    # "install + launch + touch" run with screenshots when it succeeds.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download APKs
+        uses: actions/download-artifact@v4
+        with:
+          name: openbarnyard-Android
+          path: Android/dist
+
+      - name: Enable KVM (hardware acceleration)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run on emulator (API 30, x86_64)
+        uses: reactivecircus/Android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: default
+          arch: x86_64
+          profile: Nexus 6
+          disable-animations: true
+          emulator-boot-timeout: 900
+          script: sh Android/tools/emulator_smoke.sh Android/dist/*-universal.apk emulator-out
+
+      - name: Upload screenshots & logcat
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-smoke-output
+          path: emulator-out/*
+          if-no-files-found: ignore
+          retention-days: 14
+
+  release:
+    name: Publish GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download APKs
+        uses: actions/download-artifact@v4
+        with:
+          name: openbarnyard-Android
+          path: Android/dist
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Android/dist/*.apk
+            Android/dist/*.zip
+            Android/dist/SHA256SUMS.txt
+          body: |
+            OpenBarnyard Android port.
+
+            **Which APK?** `universal` works everywhere. Or pick your ABI:
+            64-bit ARM phones → `arm64-v8a`, old 32-bit ARM phones → `armeabi-v7a`,
+            emulators/ChromeOS → `x86_64`, ancient intel tablets → `x86`.
+
+            You need your own PC copy of Barnyard: copy its files into the
+            app's GameData folder (the launcher shows the path). No game data
+            is included. See Android/README.md for the engine port status.

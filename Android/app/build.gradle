@@ -1,0 +1,65 @@
+plugins {
+    id "com.android.application"
+}
+
+Android {
+    namespace "org.opentoshi.openbarnyard"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "org.opentoshi.openbarnyard"
+        minSdk 24
+        targetSdk 34
+        versionCode 10
+        versionName "0.1.0"
+
+        ndk {
+            abiFilters "arm64-v8a", "armeabi-v7a", "x86_64", "x86"
+        }
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_STL=c++_static"
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.22.1"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+        encoding "UTF-8"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    // One universal + thin per-ABI APKs, mirroring build.py output naming.
+    splits {
+        abi {
+            enable true
+            reset()
+            include "arm64-v8a", "armeabi-v7a", "x86_64", "x86"
+            universalApk true
+        }
+    }
+}
+
+// ABI-specific version codes (higher for preferred ABIs), like build.py.
+Android.applicationVariants.all { variant ->
+    def abiCodes = ["arm64-v8a": 4, "armeabi-v7a": 3, "x86_64": 2, "x86": 1]
+    variant.outputs.all { output ->
+        def abi = output.getFilter("ABI")
+        if (abi != null) {
+            output.versionCodeOverride = variant.defaultConfig.versionCode + abiCodes.getOrDefault(abi, 0)
+        }
+    }
+}

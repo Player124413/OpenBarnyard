@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Barn silhouette centred in the adaptive-icon safe zone (108dp canvas). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- sun -->
+    <path
+        android:fillColor="#FFD84D"
+        android:pathData="M78,22 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0"/>
+    <!-- barn body -->
+    <path
+        android:fillColor="#B3392E"
+        android:pathData="M34,54 L74,54 L74,80 L34,80 Z"/>
+    <!-- roof -->
+    <path
+        android:fillColor="#6E1F16"
+        android:pathData="M29,55 L54,36 L79,55 Z"/>
+    <!-- hay loft -->
+    <path
+        android:fillColor="#FFF3C4"
+        android:pathData="M49,50 L59,50 L59,57 L49,57 Z"/>
+    <!-- door -->
+    <path
+        android:fillColor="#FFFDF4"
+        android:pathData="M47,80 L47,62 L61,62 L61,80 Z"/>
+    <!-- door cross -->
+    <path
+        android:fillColor="#B3392E"
+        android:pathData="M47,69.5 L61,69.5 L61,72 L47,72 Z M52.8,62 L55.2,62 L55.2,80 L52.8,80 Z"/>
+    <!-- ground -->
+    <path
+        android:fillColor="#2E5B39"
+        android:pathData="M24,80 L84,80 L84,84 L24,84 Z"/>
+</vector>

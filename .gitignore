@@ -375,3 +375,10 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# ---- Android port build outputs (Android/build.py, Gradle) ----
+Android/build/
+Android/dist/
+Android/.gradle/
+Android/app/build/
+Android/local.properties
+*.keystore

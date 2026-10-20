@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenBarnyard</string>
+    <string name="launcher_subtitle">Unofficial Android port of the OpenBarnyard decompilation (TOSHI 2.0 engine)</string>
+
+    <string name="btn_play">▶  Play</string>
+    <string name="btn_touch_editor">🎮  Touch controls editor</string>
+    <string name="btn_settings">⚙  Graphics &amp; performance</string>
+    <string name="btn_game_data">📁  Game data</string>
+    <string name="btn_diagnostics">🩺  Diagnostics &amp; logs</string>
+    <string name="btn_about">ℹ  About this port</string>
+
+    <string name="card_device">Your device</string>
+    <string name="card_game_data">Game data</string>
+    <string name="card_quick_start">Quick start</string>
+    <string name="quick_start_text">1) Copy the PC game files into the GameData folder (see “Game data”).\n2) Tune “Graphics &amp; performance” or leave it on Auto.\n3) Arrange the on-screen controls to your taste.\n4) Press Play!</string>
+    <string name="footer_no_data">No game files are included with this app — you need your own legally owned copy of Barnyard (PC). Support THQ Nordic and the original TOSHI developers!</string>
+    <string name="play_demo_note">Engine status: the Android platform layer (launcher, GLES renderer, touch input, optimisation) is fully working and Play launches the interactive farm tech-demo scene wired to the real engine input commands. The TOSHI gameplay renderer (GL shaders for the original DX8 materials, FMOD/Bink replacements) is the remaining porting work — see Android/PORTING.md in the repository.</string>
+
+    <string name="data_status_scanning">Scanning…</string>
+    <string name="data_empty">Folder is empty — copy the PC game files here.</string>
+    <string name="data_no_game">No Barnyard data found here (no .trb libraries).</string>
+    <string name="data_partial">Some game files found, but this does not look like a complete installation.</string>
+    <string name="data_complete">Looks like a complete Barnyard installation. ✔</string>
+    <string name="data_counts_format">Files: %1$d  ·  .trb: %2$d  ·  .ttl: %3$d  ·  .tkl: %4$d  ·  .bik: %5$d</string>
+    <string name="hint_missing_data_dir">No Data/ folder at this level — pick the folder that contains it.</string>
+    <string name="hint_few_trb">Very few .trb libraries — a full install has hundreds.</string>
+    <string name="hint_missing_ttl">No texture libraries (.ttl) found.</string>
+    <string name="hint_has_exe">Barnyard.exe found — good sign this is the PC install root.</string>
+    <string name="hint_nested">The installation seems to be in a sub-folder: %1$s</string>
+
+    <string name="device_format">%1$s\nSoC: %2$s\nCPU: %3$s · %4$d cores · RAM: %5$d MB\nGLES %6$d.%7$d · Display: %8$.0f Hz · Android API %9$d</string>
+    <string name="native_missing_toast">Native library is not available for this device ABI — the launcher still works, but the game cannot start.</string>
+    <string name="saved_toast">Saved ✔</string>
+    <string name="copied_toast">Copied to clipboard</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Graphics &amp; performance</string>
+    <string name="set_preset">Preset</string>
+    <string name="set_resolution">Render resolution: %1$d%%</string>
+    <string name="set_min_resolution">Dynamic resolution floor: %1$d%%</string>
+    <string name="set_dynamic_res">Dynamic resolution (holds FPS on weak GPUs)</string>
+    <string name="set_fps_limit">Frame-rate limit</string>
+    <string name="set_vsync">V-Sync</string>
+    <string name="set_msaa">Anti-aliasing (MSAA)</string>
+    <string name="set_texture_q">Texture quality</string>
+    <string name="set_shadow_q">Shadow quality</string>
+    <string name="set_show_fps">Show FPS counter</string>
+    <string name="set_haptics">Vibration on touch buttons</string>
+    <string name="set_cam_sens">Camera sensitivity: %1$.2f</string>
+    <string name="set_invert_y">Invert camera Y</string>
+    <string name="btn_reset_auto">Reset to Auto (recommended)</string>
+    <string name="btn_save">Save</string>
+    <string name="fps_unlimited">Unlimited</string>
+    <string name="quality_0">Low</string>
+    <string name="quality_1">Medium</string>
+    <string name="quality_2">High</string>
+    <string name="quality_3">Ultra</string>
+    <string name="msaa_off">Off</string>
+    <string-array name="preset_names">
+        <item>Auto (recommended)</item>
+        <item>Potato — weakest phones</item>
+        <item>Balanced</item>
+        <item>Quality</item>
+        <item>Ultra</item>
+        <item>Custom</item>
+    </string-array>
+
+    <!-- Touch editor -->
+    <string name="editor_title">Touch controls editor</string>
+    <string name="ed_new">New</string>
+    <string name="ed_save">Save</string>
+    <string name="ed_delete_profile">Delete profile</string>
+    <string name="ed_add_button">＋ Button</string>
+    <string name="ed_duplicate">Duplicate</string>
+    <string name="ed_delete_element">Delete</string>
+    <string name="ed_mirror">Mirror (left-handed)</string>
+    <string name="ed_snap">Snap to grid</string>
+    <string name="ed_dynamic_stick">Floating stick origin</string>
+    <string name="ed_reset">Reset defaults</string>
+    <string name="ed_export">Export</string>
+    <string name="ed_import">Import</string>
+    <string name="ed_done">Done</string>
+    <string name="ed_binding">Binding</string>
+    <string name="ed_size">Size</string>
+    <string name="ed_opacity">Opacity</string>
+    <string name="ed_selected_none">Tap an element to select it, drag to move.</string>
+    <string name="ed_selected_format">Selected: %1$s</string>
+    <string name="ed_profile_name_hint">Profile name</string>
+    <string name="ed_element_stick">Movement stick</string>
+    <string name="ed_element_camera">Camera drag area</string>
+    <string name="ed_import_failed">Could not import this profile file.</string>
+    <string name="ed_new_profile">New profile</string>
+
+    <!-- Data -->
+    <string name="data_title">Game data</string>
+    <string name="data_instructions">Copy the contents of your PC Barnyard installation (the folder containing Data/ and Barnyard.exe) into the folder below using USB or any file manager — or pick an existing folder with the button. No files are downloaded; nothing leaves your device.</string>
+    <string name="data_current_path">Current location:</string>
+    <string name="btn_pick_folder">Pick folder…</string>
+    <string name="btn_default_folder">Use default folder</string>
+    <string name="btn_rescan">Rescan</string>
+    <string name="btn_use_subfolder">Use sub-folder: %1$s</string>
+    <string name="data_engine_note">The data is only inspected (file names/counts) for verification today; it will be read by the engine as the TOSHI GL renderer lands. Your files are never modified.</string>
+
+    <!-- Diagnostics -->
+    <string name="diag_title">Diagnostics</string>
+    <string name="btn_refresh">Refresh</string>
+    <string name="btn_copy">Copy report</string>
+    <string name="btn_clear_log">Clear launcher log</string>
+    <string name="diag_hint">If something misbehaves, copy this report into a GitHub issue — it contains CPU/GPU and configuration details (no personal data).</string>
+
+    <!-- Game -->
+    <string name="game_demo_banner">Farm tech-demo · engine port in progress — controls are live, try the stick &amp; buttons!</string>
+    <string name="pause_title">Paused</string>
+    <string name="btn_resume">Resume</string>
+    <string name="btn_edit_controls">Edit controls</string>
+    <string name="btn_exit_launcher">Exit to launcher</string>
+    <string name="fps_format">%1$.0f FPS · %2$d%% res</string>
+
+    <string name="about_text">OpenBarnyard is an open-source decompilation of Barnyard (2006) and the TOSHI 2.0 engine by Blue Tongue Entertainment. This Android package adds, on top of that codebase:\n\n• a full launcher with device auto-tuning\n• an editable multi-touch control system bound to the engine\'s real AInputCommand ids\n• a native GLES2/3 core with dynamic resolution, frame pacing and runtime SIMD dispatch, built for arm64-v8a, armeabi-v7a (32-bit), x86_64 and x86\n• game-data management for your own PC copy\n\nThe remaining step for full gameplay is finishing TOSHI\'s GL renderer (the PC shaders are DirectX 8) and replacing FMOD/Bink — tracked in Android/PORTING.md. Engine © THQ Nordic / original authors; this project is for education and preservation. Do not use it to pirate the game.</string>
+</resources>
