@@ -100,6 +100,7 @@ jobs:
             SDKMANAGER="$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -1 || true)"
             if [ -z "$SDKMANAGER" ]; then SDKMANAGER="$(command -v sdkmanager)"; fi
             echo "Installing with $SDKMANAGER: ${need[*]}"
+            echo "::notice::sdkmanager install candidates: ${need[*]} via $SDKMANAGER"
             java -version
             "$SDKMANAGER" --version
             yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
@@ -107,9 +108,15 @@ jobs:
             "$SDKMANAGER" "${need[@]}" > /tmp/sdk-install.log 2>&1
             rc=$?
             set -e
-            tail -n 20 /tmp/sdk-install.log || true
+            tr '\r' '\n' < /tmp/sdk-install.log | grep -vE '^\s*$' | tail -n 20 || true
             if [ "$rc" -ne 0 ]; then
-              tail -n 25 /tmp/sdk-install.log | sed 's/%/%25/g' | while IFS= read -r line; do echo "::error::sdkmanager: $line"; done
+              echo "--- sdkmanager --list_installed ---"
+              "$SDKMANAGER" --list_installed 2>/dev/null | head -n 60 || true
+              tr '\r' '\n' < /tmp/sdk-install.log > /tmp/sdk-clean.log
+              { grep -inE 'error|failed|warning|exception|unable|not found|invalid|requires|UnsupportedClassVersion' /tmp/sdk-clean.log | head -n 20
+                echo "----- last lines -----"
+                grep -vE '^\s*$|Loading|Fetching|Downloading|Unzipping|\[.*=.*\]' /tmp/sdk-clean.log | tail -n 12
+              } | sed 's/%/%25/g' | cut -c1-300 | while IFS= read -r line; do echo "::error::sdkmanager: $line"; done
               exit "$rc"
             fi
           else
